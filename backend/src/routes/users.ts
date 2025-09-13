@@ -43,6 +43,50 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response): P
   }
 });
 
+// Update user by ID (protected route)
+router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { firstName, lastName, email, isActive } = req.body;
+
+    const user = await User.findByPk(id);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    // Check if email is already taken by another user
+    if (email && email !== user.email) {
+      const existingUser = await User.findOne({ where: { email } });
+      if (existingUser) {
+        res.status(409).json({ error: 'Email already in use' });
+        return;
+      }
+    }
+
+    // Update user fields
+    const updateData: Partial<{ firstName: string; lastName: string; email: string; isActive: boolean }> = {};
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+    if (email !== undefined) updateData.email = email;
+    if (isActive !== undefined) updateData.isActive = isActive;
+
+    await user.update(updateData);
+    await user.reload();
+
+    const userResponse = user.toJSON();
+    delete (userResponse as any).password;
+
+    res.status(200).json({
+      message: 'User updated successfully',
+      user: userResponse,
+    });
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Update user profile (protected route)
 router.put('/profile', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -115,6 +159,76 @@ router.put('/password', authenticateToken, async (req: AuthRequest, res: Respons
     res.status(200).json({ message: 'Password updated successfully' });
   } catch (error) {
     console.error('Update password error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete user by ID (protected route)
+router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findByPk(id);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    // Prevent users from deleting themselves
+    if (req.user && req.user.id === parseInt(id)) {
+      res.status(400).json({ error: 'Cannot delete your own account' });
+      return;
+    }
+
+    await user.destroy();
+
+    res.status(200).json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create new user (protected route)
+router.post('/', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { firstName, lastName, email, password } = req.body;
+
+    if (!firstName || !lastName || !email || !password) {
+      res.status(400).json({ error: 'All fields are required' });
+      return;
+    }
+
+    // Check if email already exists
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      res.status(409).json({ error: 'Email already in use' });
+      return;
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      res.status(400).json({ error: 'Password must be at least 6 characters long' });
+      return;
+    }
+
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      password,
+      isActive: true,
+    });
+
+    const userResponse = user.toJSON();
+    delete (userResponse as any).password;
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user: userResponse,
+    });
+  } catch (error) {
+    console.error('Create user error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
