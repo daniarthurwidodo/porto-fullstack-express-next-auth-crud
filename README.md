@@ -11,6 +11,7 @@ A modern full-stack application built with **Next.js 14**, **Express.js**, **Typ
 - **Modal Forms** - Add/edit users with validation
 - **Responsive Design** - Monochromatic deep gray theme with Tailwind CSS
 - **TypeScript** - Full type safety throughout the application
+- **Testing Suite** - Jest + React Testing Library with comprehensive test coverage
 
 ### Backend (Express.js)
 - **RESTful API** - Complete user management endpoints
@@ -18,6 +19,7 @@ A modern full-stack application built with **Next.js 14**, **Express.js**, **Typ
 - **PostgreSQL Database** - Sequelize ORM with migrations and seeders
 - **Security** - CORS, Helmet, bcrypt password hashing
 - **Validation** - Input validation and error handling
+- **Testing Suite** - Jest + Supertest with unit and integration tests
 
 ## 📋 Prerequisites
 
@@ -145,6 +147,57 @@ The application comes with 25 pre-seeded test users. You can login with any of t
 - **Modal Forms** - Add new users or edit existing ones
 - **Responsive Design** - Works on desktop and mobile devices
 
+## 🧪 Testing
+
+Both the backend and frontend include comprehensive test suites to ensure code quality and reliability.
+
+### Backend Testing
+The backend uses **Jest** with **Supertest** for unit and integration testing:
+
+```bash
+cd backend
+
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+```
+
+**Test Coverage:**
+- Authentication middleware (JWT validation, token expiration)
+- User authentication routes (login, register, profile)
+- User model (password hashing, validation)
+- Database operations and error handling
+- **Status:** 27/27 tests passing ✅
+
+### Frontend Testing
+The frontend uses **Jest** with **React Testing Library** for component and integration testing:
+
+```bash
+cd frontend
+
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+```
+
+**Test Coverage:**
+- UI components (Button, Input, Dialog, Modal)
+- Authentication context and hooks
+- Login page functionality and form validation
+- User management components (CRUD operations)
+- Error handling and loading states
+- **Status:** 31/31 tests passing ✅
+
 ## 🔧 Development
 
 ### Backend Scripts
@@ -155,6 +208,9 @@ npm run start        # Start production server
 npm run migrate      # Run database migrations
 npm run seed         # Seed database with test users
 npm run lint         # Run ESLint
+npm test             # Run Jest tests
+npm run test:watch   # Run tests in watch mode
+npm run test:coverage # Run tests with coverage report
 ```
 
 ### Frontend Scripts
@@ -164,6 +220,9 @@ npm run build        # Build for production
 npm run start        # Start production server
 npm run lint         # Run ESLint
 npm run type-check   # Run TypeScript type checking
+npm test             # Run Jest tests
+npm run test:watch   # Run tests in watch mode
+npm run test:coverage # Run tests with coverage report
 ```
 
 ## 🏗️ Project Structure
@@ -172,6 +231,7 @@ npm run type-check   # Run TypeScript type checking
 porto-fullstack-express-next-auth-crud/
 ├── backend/                 # Express.js API server
 │   ├── src/
+│   │   ├── __tests__/      # Jest unit tests
 │   │   ├── config/         # Database configuration
 │   │   ├── middleware/     # Auth & error handling
 │   │   ├── migrations/     # Database migrations
@@ -179,12 +239,16 @@ porto-fullstack-express-next-auth-crud/
 │   │   ├── routes/         # API routes
 │   │   ├── scripts/        # Utility scripts
 │   │   └── seeders/        # Database seeders
+│   ├── jest.config.js      # Jest configuration
 │   └── package.json
 ├── frontend/               # Next.js application
 │   ├── src/
+│   │   ├── __tests__/      # Jest + React Testing Library tests
 │   │   ├── app/           # Next.js app router pages
 │   │   ├── components/    # React components
 │   │   └── lib/           # Utilities and auth context
+│   ├── jest.config.js      # Jest configuration
+│   ├── jest.setup.js       # Jest setup file
 │   └── package.json
 ├── docker-compose.yml     # PostgreSQL setup
 └── README.md
