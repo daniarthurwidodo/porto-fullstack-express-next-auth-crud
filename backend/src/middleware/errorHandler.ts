@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ValidationError } from 'sequelize';
+import { errorLogger } from '../config/logger';
 
 interface CustomError extends Error {
   statusCode?: number;
@@ -38,10 +39,22 @@ const errorHandler = (
     message = 'Token expired';
   }
 
-  // Log error in development
-  if (process.env.NODE_ENV === 'development') {
-    console.error('Error:', error);
-  }
+  // Log error with structured logging
+  errorLogger.error({
+    error: {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      statusCode
+    },
+    request: {
+      method: req.method,
+      url: req.url,
+      userAgent: req.get('User-Agent'),
+      ip: req.ip,
+      userId: (req as any).user?.id || 'anonymous'
+    }
+  }, `${req.method} ${req.url} - ${statusCode} - ${message}`);
 
   res.status(statusCode).json({
     error: message,

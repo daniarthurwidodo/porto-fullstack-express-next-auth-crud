@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { User } from '../models/User';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { userLogger } from '../config/logger';
 
 const router = Router();
 
@@ -17,7 +18,7 @@ router.get('/', authenticateToken, async (req: AuthRequest, res: Response): Prom
       count: users.length,
     });
   } catch (error) {
-    console.error('Get users error:', error);
+    userLogger.error({ error, userId: req.user?.id }, 'Get users failed');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -38,7 +39,7 @@ router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response): P
 
     res.status(200).json({ user });
   } catch (error) {
-    console.error('Get user error:', error);
+    userLogger.error({ error, targetUserId: req.params.id, userId: req.user?.id }, 'Get user by ID failed');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -74,6 +75,8 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response): P
     await user.update(updateData);
     await user.reload();
 
+    userLogger.info({ targetUserId: user.id, updatedFields: Object.keys(updateData), userId: req.user?.id }, 'User updated successfully');
+
     const userResponse = user.toJSON();
     delete (userResponse as any).password;
 
@@ -82,7 +85,7 @@ router.put('/:id', authenticateToken, async (req: AuthRequest, res: Response): P
       user: userResponse,
     });
   } catch (error) {
-    console.error('Update user error:', error);
+    userLogger.error({ error, targetUserId: req.params.id, userId: req.user?.id }, 'Update user failed');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -115,12 +118,14 @@ router.put('/profile', authenticateToken, async (req: AuthRequest, res: Response
     await req.user.update(updateData);
     await req.user.reload();
 
+    userLogger.info({ userId: req.user.id, updatedFields: Object.keys(updateData) }, 'Profile updated successfully');
+
     res.status(200).json({
       message: 'Profile updated successfully',
       user: req.user.toJSON(),
     });
   } catch (error) {
-    console.error('Update profile error:', error);
+    userLogger.error({ error, userId: req.user?.id }, 'Update profile failed');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -156,9 +161,11 @@ router.put('/password', authenticateToken, async (req: AuthRequest, res: Respons
     // Update password
     await req.user.update({ password: newPassword });
 
+    userLogger.info({ userId: req.user.id }, 'Password updated successfully');
+
     res.status(200).json({ message: 'Password updated successfully' });
   } catch (error) {
-    console.error('Update password error:', error);
+    userLogger.error({ error, userId: req.user?.id }, 'Update password failed');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -182,9 +189,11 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response)
 
     await user.destroy();
 
+    userLogger.info({ targetUserId: user.id, deletedBy: req.user?.id }, 'User deleted successfully');
+
     res.status(200).json({ message: 'User deleted successfully' });
   } catch (error) {
-    console.error('Delete user error:', error);
+    userLogger.error({ error, targetUserId: req.params.id, userId: req.user?.id }, 'Delete user failed');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -220,6 +229,8 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response): Pro
       isActive: true,
     });
 
+    userLogger.info({ newUserId: user.id, email, createdBy: req.user?.id }, 'User created successfully');
+
     const userResponse = user.toJSON();
     delete (userResponse as any).password;
 
@@ -228,7 +239,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response): Pro
       user: userResponse,
     });
   } catch (error) {
-    console.error('Create user error:', error);
+    userLogger.error({ error, email: req.body.email, userId: req.user?.id }, 'Create user failed');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -243,9 +254,11 @@ router.delete('/account', authenticateToken, async (req: AuthRequest, res: Respo
 
     await req.user.update({ isActive: false });
 
+    userLogger.info({ userId: req.user.id }, 'Account deactivated successfully');
+
     res.status(200).json({ message: 'Account deactivated successfully' });
   } catch (error) {
-    console.error('Deactivate account error:', error);
+    userLogger.error({ error, userId: req.user?.id }, 'Deactivate account failed');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
