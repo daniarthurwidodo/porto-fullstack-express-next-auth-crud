@@ -12,27 +12,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-
-interface User {
-  id?: number
-  firstName: string
-  lastName: string
-  email: string
-  isActive: boolean
-  createdAt?: string
-  updatedAt?: string
-}
+import { User, CreateUserData, UserFormData } from '@/types/user'
 
 interface UserModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (user: User) => void
+  onSave: (user: User | CreateUserData) => void
   user?: User | null
   mode: 'add' | 'edit'
 }
 
 export function UserModal({ isOpen, onClose, onSave, user, mode }: UserModalProps) {
-  const [formData, setFormData] = useState<User>({
+  const [formData, setFormData] = useState<UserFormData>({
     firstName: '',
     lastName: '',
     email: '',

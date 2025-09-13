@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -15,16 +15,7 @@ import {
 } from '@/components/ui/table'
 import { UserModal } from '@/components/users/user-modal'
 import { Plus, Search, Edit, Trash2, Filter } from 'lucide-react'
-
-interface User {
-  id: number
-  firstName: string
-  lastName: string
-  email: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
+import { User, CreateUserData } from '@/types/user'
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
@@ -36,35 +27,7 @@ export default function UsersPage() {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add')
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
-  useEffect(() => {
-    fetchUsers()
-  }, [])
-
-  useEffect(() => {
-    filterUsers()
-  }, [users, searchTerm, statusFilter])
-
-  const fetchUsers = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('http://localhost:4001/api/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data.users || data)
-      }
-    } catch (error) {
-      console.error('Failed to fetch users:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const filterUsers = () => {
+  const filterUsers = useCallback(() => {
     let filtered = users
 
     // Filter by search term
@@ -84,6 +47,34 @@ export default function UsersPage() {
     }
 
     setFilteredUsers(filtered)
+  }, [users, searchTerm, statusFilter])
+
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  useEffect(() => {
+    filterUsers()
+  }, [filterUsers])
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('http://localhost:4001/api/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setUsers(data.users || data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleAddUser = () => {
@@ -123,11 +114,14 @@ export default function UsersPage() {
     }
   }
 
-  const handleSaveUser = (savedUser: User) => {
+  const handleSaveUser = (savedUser: User | CreateUserData) => {
     if (modalMode === 'add') {
-      setUsers([...users, savedUser])
+      // For new users, the savedUser will be a full User object returned from the API
+      setUsers([...users, savedUser as User])
     } else {
-      setUsers(users.map(user => user.id === savedUser.id ? savedUser : user))
+      // For edit mode, savedUser will always be a User with id
+      const updatedUser = savedUser as User
+      setUsers(users.map(user => user.id === updatedUser.id ? updatedUser : user))
     }
   }
 

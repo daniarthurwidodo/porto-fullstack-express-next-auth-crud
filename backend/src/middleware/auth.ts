@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { User } from '../models/User';
 
 interface AuthRequest extends Request {
@@ -50,7 +50,6 @@ const authenticateToken = async (req: AuthRequest, res: Response, next: NextFunc
 
 const generateToken = (userId: number, email: string): string => {
   const jwtSecret = process.env.JWT_SECRET;
-  const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '7d';
 
   if (!jwtSecret) {
     throw new Error('JWT secret not configured');
@@ -59,7 +58,7 @@ const generateToken = (userId: number, email: string): string => {
   return jwt.sign(
     { userId, email },
     jwtSecret,
-    { expiresIn: jwtExpiresIn as string }
+    { expiresIn: '7d' }
   );
 };
 
