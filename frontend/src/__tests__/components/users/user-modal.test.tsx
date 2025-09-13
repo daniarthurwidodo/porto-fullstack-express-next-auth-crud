@@ -113,6 +113,7 @@ describe('UserModal Component', () => {
           lastName: 'Smith',
           email: 'jane.smith@example.com',
           isActive: true,
+          password: 'password123',
         }),
       })
     })
@@ -144,7 +145,7 @@ describe('UserModal Component', () => {
     await user.clear(firstNameInput)
     await user.type(firstNameInput, 'Johnny')
 
-    const submitButton = screen.getByRole('button', { name: /update user/i })
+    const submitButton = screen.getByRole('button', { name: /save changes/i })
     await user.click(submitButton)
 
     await waitFor(() => {
@@ -173,7 +174,7 @@ describe('UserModal Component', () => {
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
-      json: () => Promise.resolve({ error: 'Email already exists' }),
+      json: () => Promise.resolve({ message: 'Email already exists' }),
     })
 
     render(

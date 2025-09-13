@@ -32,8 +32,8 @@ describe('LoginPage', () => {
   it('should render login form', () => {
     render(<LoginPage />)
 
-    expect(screen.getByText('Welcome Back')).toBeInTheDocument()
-    expect(screen.getByText('Sign in to your account to continue')).toBeInTheDocument()
+    expect(screen.getByText('Porto Admin')).toBeInTheDocument()
+    expect(screen.getByText('Sign in to your admin dashboard')).toBeInTheDocument()
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
@@ -77,23 +77,29 @@ describe('LoginPage', () => {
 
   it('should show loading state during login', async () => {
     const user = userEvent.setup()
-    mockUseAuth.mockReturnValue({
-      user: null,
-      login: mockLogin,
-      logout: jest.fn(),
-      loading: true,
-    })
+    // Simulate clicking the form to trigger loading state
+    mockLogin.mockImplementation(() => new Promise(() => {})) // Never resolves to keep loading
 
     render(<LoginPage />)
 
-    const submitButton = screen.getByRole('button', { name: /signing in/i })
-    expect(submitButton).toBeDisabled()
-    expect(screen.getByText('Signing in...')).toBeInTheDocument()
+    const emailInput = screen.getByLabelText(/email/i)
+    const passwordInput = screen.getByLabelText(/password/i)
+    const submitButton = screen.getByRole('button', { name: /sign in/i })
+
+    await user.type(emailInput, 'test@example.com')
+    await user.type(passwordInput, 'password123')
+    await user.click(submitButton)
+
+    await waitFor(() => {
+      const loadingButton = screen.getByRole('button', { name: /signing in/i })
+      expect(loadingButton).toBeDisabled()
+      expect(screen.getByText('Signing in...')).toBeInTheDocument()
+    })
   })
 
   it('should show error message when login fails', async () => {
     const user = userEvent.setup()
-    mockLogin.mockRejectedValue(new Error('Invalid credentials'))
+    mockLogin.mockResolvedValue(false) // Login fails
 
     render(<LoginPage />)
 
@@ -106,7 +112,7 @@ describe('LoginPage', () => {
     await user.click(submitButton)
 
     await waitFor(() => {
-      expect(screen.getByText('Invalid credentials')).toBeInTheDocument()
+      expect(screen.getByText('Invalid email or password')).toBeInTheDocument()
     })
   })
 
@@ -124,7 +130,7 @@ describe('LoginPage', () => {
 
   it('should clear error message when user starts typing', async () => {
     const user = userEvent.setup()
-    mockLogin.mockRejectedValue(new Error('Invalid credentials'))
+    mockLogin.mockResolvedValue(false) // Login fails
 
     render(<LoginPage />)
 
@@ -138,13 +144,13 @@ describe('LoginPage', () => {
     await user.click(submitButton)
 
     await waitFor(() => {
-      expect(screen.getByText('Invalid credentials')).toBeInTheDocument()
+      expect(screen.getByText('Invalid email or password')).toBeInTheDocument()
     })
 
     // Clear error by typing
     await user.clear(emailInput)
     await user.type(emailInput, 'new@example.com')
 
-    expect(screen.queryByText('Invalid credentials')).not.toBeInTheDocument()
+    expect(screen.queryByText('Invalid email or password')).not.toBeInTheDocument()
   })
 })
