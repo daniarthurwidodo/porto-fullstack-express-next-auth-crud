@@ -13,54 +13,61 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 import { UserModal } from '@/components/users/user-modal'
 import { Plus, Search, Edit, Trash2, Filter } from 'lucide-react'
 import { User, CreateUserData } from '@/types/user'
 
+interface PaginationData {
+  currentPage: number
+  totalPages: number
+  totalItems: number
+  itemsPerPage: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add')
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-
-  const filterUsers = useCallback(() => {
-    let filtered = users
-
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(user =>
-        user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    // Filter by status
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(user =>
-        statusFilter === 'active' ? user.isActive : !user.isActive
-      )
-    }
-
-    setFilteredUsers(filtered)
-  }, [users, searchTerm, statusFilter])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pagination, setPagination] = useState<PaginationData>({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  })
 
   useEffect(() => {
     fetchUsers()
-  }, [])
-
-  useEffect(() => {
-    filterUsers()
-  }, [filterUsers])
+  }, [currentPage, searchTerm, statusFilter])
 
   const fetchUsers = async () => {
     try {
+      setLoading(true)
       const token = localStorage.getItem('token')
-      const response = await fetch('http://localhost:4001/api/users', {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: '10',
+        search: searchTerm,
+        status: statusFilter,
+      })
+
+      const response = await fetch(`http://localhost:4001/api/users?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -68,13 +75,35 @@ export default function UsersPage() {
 
       if (response.ok) {
         const data = await response.json()
-        setUsers(data.users || data)
+        setUsers(data.users || [])
+        setPagination(data.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          itemsPerPage: 10,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        })
       }
     } catch (error) {
       console.error('Failed to fetch users:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value)
+    setCurrentPage(1) // Reset to first page when searching
+  }
+
+  const handleStatusFilterChange = (status: 'all' | 'active' | 'inactive') => {
+    setStatusFilter(status)
+    setCurrentPage(1) // Reset to first page when filtering
   }
 
   const handleAddUser = () => {
@@ -178,7 +207,7 @@ export default function UsersPage() {
               <Input
                 placeholder="Search users..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-10"
               />
             </div>
@@ -187,21 +216,21 @@ export default function UsersPage() {
               <Button
                 variant={statusFilter === 'all' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setStatusFilter('all')}
+                onClick={() => handleStatusFilterChange('all')}
               >
                 All
               </Button>
               <Button
                 variant={statusFilter === 'active' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setStatusFilter('active')}
+                onClick={() => handleStatusFilterChange('active')}
               >
                 Active
               </Button>
               <Button
                 variant={statusFilter === 'inactive' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setStatusFilter('inactive')}
+                onClick={() => handleStatusFilterChange('inactive')}
               >
                 Inactive
               </Button>
@@ -221,7 +250,7 @@ export default function UsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.length === 0 ? (
+                {users.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8">
                       <p className="text-muted-foreground">
@@ -233,7 +262,7 @@ export default function UsersPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredUsers.map((user) => (
+                  users.map((user: User) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
                         {user.firstName} {user.lastName}
@@ -278,8 +307,46 @@ export default function UsersPage() {
             </Table>
           </div>
 
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="mt-6">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      className={!pagination.hasPreviousPage ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        onClick={() => handlePageChange(page)}
+                        isActive={currentPage === page}
+                        className="cursor-pointer"
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      className={!pagination.hasNextPage ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
+
           <div className="mt-4 text-sm text-muted-foreground">
-            Showing {filteredUsers.length} of {users.length} users
+            Showing {users.length} of {pagination.totalItems} users
+            {pagination.totalPages > 1 && (
+              <span> (Page {pagination.currentPage} of {pagination.totalPages})</span>
+            )}
           </div>
         </CardContent>
       </Card>

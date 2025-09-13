@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import { Op } from 'sequelize';
 import { User } from '../models/User';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { userLogger } from '../config/logger';
@@ -8,14 +9,54 @@ const router = Router();
 // Get all users (protected route)
 router.get('/', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const users = await User.findAll({
+    // Parse pagination parameters
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = (page - 1) * limit;
+
+    // Parse search and filter parameters
+    const search = req.query.search as string || '';
+    const status = req.query.status as string || 'all';
+
+    // Build where clause for filtering
+    const whereClause: any = {};
+    
+    // Add search filter
+    if (search) {
+      whereClause[Op.or] = [
+        { firstName: { [Op.iLike]: `%${search}%` } },
+        { lastName: { [Op.iLike]: `%${search}%` } },
+        { email: { [Op.iLike]: `%${search}%` } },
+      ];
+    }
+
+    // Add status filter
+    if (status === 'active') {
+      whereClause.isActive = true;
+    } else if (status === 'inactive') {
+      whereClause.isActive = false;
+    }
+
+    const { count, rows: users } = await User.findAndCountAll({
+      where: whereClause,
       attributes: { exclude: ['password'] },
       order: [['createdAt', 'DESC']],
+      limit,
+      offset,
     });
+
+    const totalPages = Math.ceil(count / limit);
 
     res.status(200).json({
       users,
-      count: users.length,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: count,
+        itemsPerPage: limit,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
     });
   } catch (error) {
     userLogger.error({ error, userId: req.user?.id }, 'Get users failed');
